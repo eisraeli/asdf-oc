@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+ASDF_INSTALL_TYPE=${ASDF_INSTALL_TYPE:-version  }
+[ -n "$ASDF_INSTALL_VERSION" ] || (>&2 echo 'Missing ASDF_INSTALL_VERSION' && exit 1)
+[ -n "$ASDF_INSTALL_PATH" ] || (>&2 echo 'Missing ASDF_INSTALL_PATH' && exit 1)
+
+install_oc() {
+  local install_type=$1
+  local version=$2
+  local install_path=$3
+  local bin_install_path="$install_path/bin"
+  local download_url="$(get_download_url $version)"
+
+  mkdir -p "${bin_install_path}"
+
+  local bin_path="${bin_install_path}/oc"
+  echo "Downloading openshift-client from ${download_url}"
+  if curl -L -sf "$download_url" -o "$bin_install_path/archive"; then
+    tar -zxf $bin_install_path/archive -C $bin_install_path
+    rm $bin_install_path/archive $bin_install_path/kubectl $bin_install_path/README.md
+  else
+    echo "Failed to download openshift-client from ${download_url}. Does the version exist and is available in the requested $(get_cpu) architecture?"
+    exit 1
+  fi
+}
+
+get_arch() {
+  uname | tr '[:upper:]' '[:lower:]'
+}
+
+get_cpu() {
+  local machine_hardware_name  
+
+  case "$machine_hardware_name" in
+    'powerpc64le' | 'ppc64le') local cpu_type="ppc64le";;
+    'aarch64') local cpu_type="arm64";;
+    'armv7l') local cpu_type="arm";;
+  esac
+
+  echo "$cpu_type"
+}
+
+get_download_url() {
+  local version="$1"  
+  local platform="$(get_arch)"
+  local file_extension=".tar.gz"
+
+  if [ $platform == "darwin" ]; then
+    platform="mac"
+  fi
+
+  local url="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${version}/openshift-client-${platform}"
+  if [ -z "$get_cpu"] 
+  then
+    url="${url}-${get_cpu}"
+  fi
+  
+  if [ $platform == "windows" ]; then
+    file_extension=".zip"
+  fi
+
+  echo "$url$version$file_extension"
+}
+
+install_oc $ASDF_INSTALL_TYPE $ASDF_INSTALL_VERSION $ASDF_INSTALL_PATH

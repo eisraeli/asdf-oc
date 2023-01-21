@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+curl -s https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/ | grep -oEm 1 '([0-9]+\.[0-9]+\.[0-9]+)'
